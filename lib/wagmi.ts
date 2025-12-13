@@ -19,7 +19,7 @@ export const config = createConfig({
   ],
   transports: {
     [selectedChain.id]: http(process.env.NEXT_PUBLIC_RPC_URL || defaultRpcUrl),
-  },
+  } as Record<typeof selectedChain.id, ReturnType<typeof http>>,
 });
 
 declare module "wagmi" {

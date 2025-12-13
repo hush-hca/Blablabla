@@ -138,6 +138,10 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
         user = newUser;
       }
 
+      if (!user) {
+        throw new Error("Failed to get or create user");
+      }
+
       // Determine payment token from transaction
       const paymentToken = "BLA"; // This should be determined from the transaction
       const paymentAmount = POST_COSTS[paymentToken].toString();

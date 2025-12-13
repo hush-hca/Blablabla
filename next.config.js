@@ -9,6 +9,10 @@ const nextConfig = {
       },
     ],
   },
+  // Turbopack 비활성화 (webpack 사용)
+  experimental: {
+    turbo: undefined,
+  },
   // Webpack 설정으로 테스트 파일 제외
   webpack: (config, { webpack }) => {
     // thread-stream의 테스트 파일들과 관련 파일들을 완전히 무시
