@@ -30,14 +30,28 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# Web3
+# Network Configuration
+# Set to "testnet" for Base Sepolia, or "mainnet" (or omit) for Base Mainnet
+NEXT_PUBLIC_NETWORK=mainnet
+
+# Web3 (Mainnet)
 NEXT_PUBLIC_CHAIN_ID=8453
 NEXT_PUBLIC_RPC_URL=https://mainnet.base.org
+
+# Web3 (Testnet - Base Sepolia)
+# NEXT_PUBLIC_CHAIN_ID=84532
+# NEXT_PUBLIC_RPC_URL=https://sepolia.base.org
 
 # Token Contracts (Base Mainnet)
 NEXT_PUBLIC_HUNT_TOKEN=0x37f0c2915CeCcE7e977183B8543Fc0864d03e064C
 NEXT_PUBLIC_BLA_TOKEN=your_bla_token_address_from_hunt_town
 NEXT_PUBLIC_USDC_TOKEN=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+
+# Token Contracts (Base Sepolia Testnet)
+# 테스트넷에서는 자신이 배포한 토큰 주소를 사용하세요
+# NEXT_PUBLIC_HUNT_TOKEN=your_testnet_hunt_token_address
+# NEXT_PUBLIC_BLA_TOKEN=your_testnet_bla_token_address
+# NEXT_PUBLIC_USDC_TOKEN=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 
 # Payment Receiver (where payments go)
 NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS=your_payment_receiver_address
@@ -119,5 +133,7 @@ https://github.com/cyh76507707/reviewme-opensource?tab=readme-ov-file#1-farcaste
 ### Cron Job Issues
 - Verify the cron secret matches in both the cron service and environment variables
 - Check the API route logs for errors
+
+
 
 

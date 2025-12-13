@@ -98,3 +98,5 @@ CREATE TRIGGER update_voice_messages_updated_at BEFORE UPDATE ON voice_messages
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
+
+

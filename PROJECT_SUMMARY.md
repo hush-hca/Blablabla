@@ -149,3 +149,5 @@
 The app is ready for deployment after configuring environment variables and setting up Supabase!
 
 
+
+

@@ -1,10 +1,22 @@
 import { Address } from "viem";
 
-// Base Mainnet Contract Addresses
-export const HUNT_TOKEN: Address = "0x37f0c2915CeCcE7e977183B8543Fc0864d03e064C";
-export const USDC_TOKEN: Address = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-// BLA token address - needs to be set from Hunt.Town
-export const BLA_TOKEN: Address = process.env.NEXT_PUBLIC_BLA_TOKEN as Address || "0x0000000000000000000000000000000000000000";
+// Determine network (testnet or mainnet)
+const isTestnet = process.env.NEXT_PUBLIC_NETWORK === "testnet";
+
+// Contract Addresses - supports both testnet and mainnet
+export const HUNT_TOKEN: Address = (process.env.NEXT_PUBLIC_HUNT_TOKEN as Address) || 
+  (isTestnet 
+    ? "0x0000000000000000000000000000000000000000" // Testnet HUNT - deploy your own or use test token
+    : "0x37f0c2915CeCcE7e977183B8543Fc0864d03e064C"); // Mainnet HUNT
+
+export const USDC_TOKEN: Address = (process.env.NEXT_PUBLIC_USDC_TOKEN as Address) || 
+  (isTestnet 
+    ? "0x036CbD53842c5426634e7929541eC2318f3dCF7e" // Base Sepolia USDC test token
+    : "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"); // Mainnet USDC
+
+// BLA token address - needs to be set from Hunt.Town (mainnet) or deployed (testnet)
+export const BLA_TOKEN: Address = (process.env.NEXT_PUBLIC_BLA_TOKEN as Address) || 
+  "0x0000000000000000000000000000000000000000";
 
 // ERC20 ABI (minimal for transfer)
 export const ERC20_ABI = [
@@ -43,5 +55,7 @@ export const POST_COSTS = {
 
 export const REACTION_POINTS = parseInt(process.env.NEXT_PUBLIC_REACTION_POINTS || "100");
 export const POINTS_TO_BLA_RATE = parseInt(process.env.NEXT_PUBLIC_POINTS_TO_BLA_RATE || "1000");
+
+
 
 
