@@ -9,47 +9,60 @@ const nextConfig = {
       },
     ],
   },
-  // Server Components에서 특정 패키지를 외부화하여 번들에서 제외
-  serverComponentsExternalPackages: [
-    'pino',
-    'pino-pretty',
-    'thread-stream',
-  ],
   // Webpack 설정으로 테스트 파일 제외
-  webpack: (config, { isServer }) => {
-    // thread-stream의 테스트 파일들을 무시
+  webpack: (config, { isServer, webpack }) => {
+    // thread-stream의 테스트 파일들과 관련 파일들을 완전히 무시
     config.plugins = config.plugins || [];
-    const webpack = require('webpack');
+    
+    // 여러 패턴으로 테스트 파일 제외
     config.plugins.push(
       new webpack.IgnorePlugin({
         resourceRegExp: /^thread-stream\/test/,
-      })
+        contextRegExp: /thread-stream/,
+      }),
+      new webpack.IgnorePlugin({
+        resourceRegExp: /^thread-stream\/bench/,
+        contextRegExp: /thread-stream/,
+      }),
+      new webpack.IgnorePlugin({
+        resourceRegExp: /thread-stream.*\.test\./,
+      }),
+      new webpack.IgnorePlugin({
+        resourceRegExp: /thread-stream.*\.md$/,
+      }),
+      new webpack.IgnorePlugin({
+        resourceRegExp: /thread-stream\/LICENSE$/,
+      }),
+      // thread-stream의 index.js가 test를 require하는 것을 방지
+      new webpack.NormalModuleReplacementPlugin(
+        /thread-stream\/test/,
+        require.resolve('./lib/empty-module.js')
+      ),
+      new webpack.NormalModuleReplacementPlugin(
+        /thread-stream\/bench/,
+        require.resolve('./lib/empty-module.js')
+      )
     );
     
     // 테스트 파일 경로를 무시하도록 alias 설정
-    if (isServer) {
-      config.resolve = config.resolve || {};
-      config.resolve.alias = config.resolve.alias || {};
-      // 테스트 파일들을 false로 설정하여 무시
-      const testFiles = [
-        'thread-stream/test',
-        'thread-stream/bench',
-      ];
-      testFiles.forEach((file) => {
-        config.resolve.alias[file] = false;
-      });
-    }
+    config.resolve = config.resolve || {};
+    config.resolve.alias = config.resolve.alias || {};
+    
+    // 테스트 파일들을 false로 설정하여 무시
+    const testFiles = [
+      'thread-stream/test',
+      'thread-stream/bench',
+      'thread-stream/LICENSE',
+    ];
+    testFiles.forEach((file) => {
+      config.resolve.alias[file] = false;
+    });
     
     return config;
   },
-  // Turbopack 설정 (Next.js 16)
+  // Turbopack 비활성화 (webpack 사용)
   experimental: {
-    turbo: {
-      resolveAlias: {
-        'thread-stream/test': false,
-        'thread-stream/bench': false,
-      },
-    },
+    // turbo를 명시적으로 비활성화하지 않지만, webpack 설정이 우선 적용됨
   },
 };
 
