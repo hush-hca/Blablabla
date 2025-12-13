@@ -171,3 +171,4 @@ NEXT_PUBLIC_BLA_TOKEN=your_mainnet_bla_token_address
 - 컨트랙트 주소가 올바른지 확인
 - RPC URL이 올바른지 확인
 
+
