@@ -51,3 +51,4 @@ Schedule: Daily at midnight UTC (`0 0 * * *`)
 5. Test claim functionality
 6. Test cron job manually by calling the API endpoint
 
+

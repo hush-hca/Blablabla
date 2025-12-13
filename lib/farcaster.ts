@@ -39,3 +39,4 @@ export function generateFarcasterFrameUrl(messageId: string, appUrl: string): st
   return `${appUrl}/message/${messageId}`;
 }
 
+

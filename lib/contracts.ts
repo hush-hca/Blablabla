@@ -44,3 +44,4 @@ export const POST_COSTS = {
 export const REACTION_POINTS = parseInt(process.env.NEXT_PUBLIC_REACTION_POINTS || "100");
 export const POINTS_TO_BLA_RATE = parseInt(process.env.NEXT_PUBLIC_POINTS_TO_BLA_RATE || "1000");
 
+
