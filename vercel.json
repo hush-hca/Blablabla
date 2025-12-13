@@ -5,10 +5,7 @@
       "schedule": "0 0 * * *"
     }
   ],
-  "buildCommand": "NEXT_PRIVATE_SKIP_TURBO=1 next build",
-  "env": {
-    "NEXT_PRIVATE_SKIP_TURBO": "1"
-  }
+  "buildCommand": "NEXT_PRIVATE_SKIP_TURBO=1 next build"
 }
 
 
