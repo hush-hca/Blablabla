@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther, formatUnits } from "viem";
 import { supabase } from "@/lib/supabase/client";
-import { POST_COSTS, BLA_TOKEN, HUNT_TOKEN, USDC_TOKEN, ERC20_ABI } from "@/lib/contracts";
+import { POST_COSTS, BLA_TOKEN, HUNT_TOKEN, USDC_TOKEN, ERC20_ABI, PAYMENT_RECEIVER_ADDRESS } from "@/lib/contracts";
 import { PaymentModal } from "./PaymentModal";
 import { Mic, Loader2 } from "lucide-react";
 
@@ -79,6 +79,18 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
         ? HUNT_TOKEN
         : USDC_TOKEN;
 
+    // Validate token address
+    if (!tokenAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
+      alert(`${token} token address is not configured. Please set NEXT_PUBLIC_${token}_TOKEN environment variable.`);
+      return;
+    }
+
+    // Validate payment receiver address
+    if (!PAYMENT_RECEIVER_ADDRESS || PAYMENT_RECEIVER_ADDRESS === "0x0000000000000000000000000000000000000000") {
+      alert("Payment receiver address is not configured. Please set NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS environment variable in Vercel.");
+      return;
+    }
+
     const amount = POST_COSTS[token];
     const decimals = token === "USDC" ? 6 : 18;
 
@@ -87,10 +99,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: "transfer",
-        args: [
-          process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS as `0x${string}` || "0x0000000000000000000000000000000000000000",
-          amount,
-        ],
+        args: [PAYMENT_RECEIVER_ADDRESS, amount],
       });
     } catch (error) {
       console.error("Payment error:", error);

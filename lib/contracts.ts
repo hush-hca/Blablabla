@@ -18,6 +18,10 @@ export const USDC_TOKEN: Address = (process.env.NEXT_PUBLIC_USDC_TOKEN as Addres
 export const BLA_TOKEN: Address = (process.env.NEXT_PUBLIC_BLA_TOKEN as Address) || 
   "0x0000000000000000000000000000000000000000";
 
+// Payment receiver address - MUST be set in environment variables
+export const PAYMENT_RECEIVER_ADDRESS: Address | null = 
+  (process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS as Address) || null;
+
 // ERC20 ABI (minimal for transfer)
 export const ERC20_ABI = [
   {

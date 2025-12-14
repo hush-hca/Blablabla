@@ -5,6 +5,7 @@ import { useAccount } from "wagmi";
 import { supabase } from "@/lib/supabase/client";
 import { POINTS_TO_BLA_RATE } from "@/lib/contracts";
 import { ConnectWallet } from "@/components/ConnectWallet";
+import { Logo } from "@/components/Logo";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { Loader2 } from "lucide-react";
 
@@ -145,6 +146,7 @@ export default function ClaimPage() {
     return (
       <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
         <div className="container mx-auto px-4 py-8 max-w-2xl">
+          <Logo size={48} className="mb-8" />
           <ConnectWallet />
         </div>
       </main>
@@ -154,6 +156,7 @@ export default function ClaimPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <Logo size={48} className="mb-8" />
         <h1 className="text-4xl font-bold mb-8">Claim Your BLA Tokens</h1>
 
         {loading ? (

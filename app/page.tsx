@@ -5,6 +5,7 @@ import { useAccount } from "wagmi";
 import { ChatInterface } from "@/components/ChatInterface";
 import { TopMessages } from "@/components/TopMessages";
 import { ConnectWallet } from "@/components/ConnectWallet";
+import { Logo } from "@/components/Logo";
 import Link from "next/link";
 
 export default function Home() {
@@ -23,7 +24,7 @@ export default function Home() {
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Blabla</h1>
+          <Logo size={48} className="mb-4" />
           <p className="text-gray-400">Share your bear market feelings anonymously</p>
         </header>
 
