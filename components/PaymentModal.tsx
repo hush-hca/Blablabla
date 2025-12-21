@@ -27,7 +27,10 @@ export function PaymentModal({ onPayment, onClose }: PaymentModalProps) {
         </p>
         <div className="space-y-3">
           <button
-            onClick={() => onPayment("BLA")}
+            onClick={() => {
+              console.log("Pay with BLA button clicked");
+              onPayment("BLA");
+            }}
             className="w-full bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors text-left"
           >
             <div className="font-semibold">Pay with BLA</div>
