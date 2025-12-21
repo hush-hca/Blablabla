@@ -1,6 +1,7 @@
 import { http, createConfig } from "wagmi";
 import { base, baseSepolia } from "wagmi/chains";
 import { metaMask, walletConnect } from "wagmi/connectors";
+import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector";
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "your-project-id";
 
@@ -14,6 +15,9 @@ const defaultRpcUrl = isTestnet
 export const config = createConfig({
   chains: [selectedChain],
   connectors: [
+    // Farcaster mini-app connector를 첫 번째로 배치 (가장 높은 우선순위)
+    // Farcaster 앱 내에서는 자동으로 연결되고, 브라우저에서는 다른 지갑으로 폴백
+    farcasterMiniApp(),
     metaMask(),
     walletConnect({ projectId }),
   ],
