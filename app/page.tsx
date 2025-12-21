@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ChatInterface } from "@/components/ChatInterface";
 import { TopMessages } from "@/components/TopMessages";
-import { ConnectWallet } from "@/components/ConnectWallet";
 import { Logo } from "@/components/Logo";
 import Link from "next/link";
 
@@ -23,18 +23,22 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <header className="mb-8">
-          <Logo size={48} className="mb-4" />
-          <p className="text-gray-400">Share your bear market feelings anonymously</p>
+        <header className="mb-8 flex items-center justify-between">
+          <div>
+            <Logo size={48} className="mb-4" />
+            <p className="text-gray-400">Share your bear market feelings anonymously</p>
+          </div>
+          <div className="flex items-center">
+            <ConnectButton />
+          </div>
         </header>
 
-        {!isConnected ? (
-          <div className="bg-gray-800 rounded-lg p-8 text-center">
-            <ConnectWallet />
-          </div>
-        ) : (
+        {/* Top Messages는 항상 표시 */}
+        <TopMessages />
+
+        {/* Chat Interface는 지갑 연결 후에만 표시 */}
+        {isConnected ? (
           <>
-            <TopMessages />
             <div className="mt-8">
               <ChatInterface walletAddress={address!} />
             </div>
@@ -47,6 +51,15 @@ export default function Home() {
               </Link>
             </div>
           </>
+        ) : (
+          <div className="bg-gray-800 rounded-lg p-8 text-center mt-8">
+            <p className="text-gray-400 mb-4">
+              Connect your wallet to share your voice message
+            </p>
+            <div className="flex justify-center">
+              <ConnectButton />
+            </div>
+          </div>
         )}
       </div>
     </main>
