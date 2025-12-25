@@ -17,11 +17,15 @@
     "ethers": "^6.11.1",
     "lucide-react": "^0.344.0",
     "next": "14.2.5",
+    "pino-pretty": "^10.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.2.1",
     "viem": "^2.1.4",
     "wagmi": "^2.5.8"
+  },
+  "optionalDependencies": {
+    "@react-native-async-storage/async-storage": "^1.23.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.19",

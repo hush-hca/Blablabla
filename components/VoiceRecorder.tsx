@@ -118,10 +118,21 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
   }
 
   async function handleUpload() {
-    if (!audioBlob) return;
+    if (!audioBlob || !hash) return;
 
     setUploading(true);
     try {
+      // Check if this transaction hash has already been used (server-side check)
+      const { data: existingMessage } = await supabase
+        .from("voice_messages")
+        .select("id")
+        .eq("transaction_hash", hash)
+        .single();
+
+      if (existingMessage) {
+        throw new Error("This payment transaction has already been used for an upload.");
+      }
+
       // Upload to Supabase Storage
       const fileExt = "webm";
       const fileName = `${walletAddress}-${Date.now()}.${fileExt}`;
@@ -176,7 +187,13 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
         transaction_hash: hash,
       });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        // Check if error is due to duplicate transaction_hash
+        if (dbError.message?.includes("duplicate") || dbError.message?.includes("unique")) {
+          throw new Error("This payment transaction has already been used for an upload.");
+        }
+        throw dbError;
+      }
 
       // Reset state
       setAudioBlob(null);
@@ -185,7 +202,13 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
       onPostSuccess();
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to upload voice message. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload voice message. Please try again.";
+      alert(errorMessage);
+      // Reset used transaction hash on error so user can retry with same payment if needed
+      // (though this shouldn't happen if DB check works correctly)
+      if (errorMessage.includes("already been used")) {
+        usedTransactionHashRef.current = null;
+      }
     } finally {
       setUploading(false);
     }
