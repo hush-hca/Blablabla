@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { supabase } from "@/lib/supabase/client";
-import { POINTS_TO_BLA_RATE } from "@/lib/contracts";
+import { POINTS_TO_BLA_RATE, BLA_TOKEN, ERC20_ABI, CLAIM_TREASURY_ADDRESS } from "@/lib/contracts";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { Logo } from "@/components/Logo";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { parseEther } from "viem";
 import { Loader2 } from "lucide-react";
 
 export default function ClaimPage() {
@@ -29,11 +30,55 @@ export default function ClaimPage() {
   }, [address]);
 
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && hash) {
+      // Save claim record to database after successful transaction
+      saveClaimRecord();
+    }
+  }, [isSuccess, hash]);
+
+  async function saveClaimRecord() {
+    if (!address || !hash) return;
+
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const pointsBLA = Math.floor(bbPoints / POINTS_TO_BLA_RATE);
+
+      await supabase.from("daily_claims").insert({
+        wallet_address: address,
+        claim_date: today,
+        bb_points_converted: pointsBLA,
+        top_message_reward: topMessageReward,
+        total_claimed: claimableBLA,
+        transaction_hash: hash,
+      });
+
+      // Mark top message rewards as claimed
+      if (topMessageReward > 0) {
+        const { data: userMessages } = await supabase
+          .from("voice_messages")
+          .select("id")
+          .eq("wallet_address", address);
+
+        const messageIds = userMessages?.map((m) => m.id) || [];
+
+        if (messageIds.length > 0) {
+          await supabase
+            .from("top_message_rewards")
+            .update({ claimed: true })
+            .in("message_id", messageIds)
+            .eq("claimed", false);
+        }
+      }
+
       alert("BLA tokens claimed successfully!");
       fetchClaimableAmount();
+    } catch (error) {
+      console.error("Error saving claim record:", error);
+      // Transaction succeeded but database save failed - still show success
+      alert("BLA tokens claimed successfully! (Note: Claim record may not be saved)");
+      fetchClaimableAmount();
     }
-  }, [isSuccess]);
+  }
 
   async function fetchClaimableAmount() {
     if (!address) return;
@@ -102,40 +147,40 @@ export default function ClaimPage() {
     if (!address || !canClaim) return;
 
     try {
-      // In a real implementation, you would call a contract to mint/transfer BLA tokens
-      // For now, we'll just record the claim in the database
-      const today = new Date().toISOString().split("T")[0];
-      const pointsBLA = Math.floor(bbPoints / POINTS_TO_BLA_RATE);
-
-      await supabase.from("daily_claims").insert({
-        wallet_address: address,
-        claim_date: today,
-        bb_points_converted: pointsBLA,
-        top_message_reward: topMessageReward,
-        total_claimed: claimableBLA,
-        transaction_hash: hash || "pending",
-      });
-
-      // Mark top message rewards as claimed
-      if (topMessageReward > 0) {
-        const { data: userMessages } = await supabase
-          .from("voice_messages")
-          .select("id")
-          .eq("wallet_address", address);
-
-        const messageIds = userMessages?.map((m) => m.id) || [];
-
-        if (messageIds.length > 0) {
-          await supabase
-            .from("top_message_rewards")
-            .update({ claimed: true })
-            .in("message_id", messageIds)
-            .eq("claimed", false);
-        }
+      // Validate BLA token address
+      if (!BLA_TOKEN || BLA_TOKEN === "0x0000000000000000000000000000000000000000") {
+        alert("BLA token address is not configured. Please set NEXT_PUBLIC_BLA_TOKEN environment variable.");
+        return;
       }
 
-      // Reset BB points (they've been converted)
-      // In production, you'd want to track this more carefully
+      const amount = parseEther(claimableBLA.toString());
+
+      // Try to mint tokens first (for testnet contracts with mint function)
+      // If that fails or if treasury address is set, use transfer from treasury
+      try {
+        if (CLAIM_TREASURY_ADDRESS && CLAIM_TREASURY_ADDRESS !== "0x0000000000000000000000000000000000000000") {
+          // Transfer from treasury address
+          // Note: Treasury address needs to approve this contract or user needs to have allowance
+          // For now, we'll try direct transfer (requires treasury to have approved)
+          writeContract({
+            address: BLA_TOKEN,
+            abi: ERC20_ABI,
+            functionName: "transfer",
+            args: [address, amount],
+          });
+        } else {
+          // Try mint function (for testnet)
+          writeContract({
+            address: BLA_TOKEN,
+            abi: ERC20_ABI,
+            functionName: "mint",
+            args: [address, amount],
+          });
+        }
+      } catch (error) {
+        console.error("Contract call error:", error);
+        alert("Failed to initiate claim transaction. Please try again.");
+      }
     } catch (error) {
       console.error("Error claiming:", error);
       alert("Failed to claim. Please try again.");

@@ -24,6 +24,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const usedTransactionHashRef = useRef<string | null>(null);
+  const isCancelingRef = useRef<boolean>(false);
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -39,8 +40,9 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
 
   async function startRecording() {
     try {
-      // Reset used transaction hash for new recording
+      // Reset state for new recording
       usedTransactionHashRef.current = null;
+      isCancelingRef.current = false;
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -54,9 +56,12 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        setAudioBlob(blob);
-        setAudioUrl(URL.createObjectURL(blob));
+        // Only create blob if not canceling
+        if (!isCancelingRef.current) {
+          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+          setAudioBlob(blob);
+          setAudioUrl(URL.createObjectURL(blob));
+        }
       };
 
       mediaRecorder.start();
@@ -187,6 +192,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
   }
 
   function cancelRecording() {
+    isCancelingRef.current = true;
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
@@ -194,6 +200,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
     setIsRecording(false);
     setAudioBlob(null);
     setAudioUrl(null);
+    setShowPaymentModal(false);
     chunksRef.current = [];
     usedTransactionHashRef.current = null;
   }

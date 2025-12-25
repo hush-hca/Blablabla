@@ -48,6 +48,16 @@ export const ERC20_ABI = [
     outputs: [{ name: "", type: "uint8" }],
     type: "function",
   },
+  {
+    constant: false,
+    inputs: [
+      { name: "_to", type: "address" },
+      { name: "_amount", type: "uint256" },
+    ],
+    name: "mint",
+    outputs: [],
+    type: "function",
+  },
 ] as const;
 
 // Payment configuration
@@ -59,6 +69,11 @@ export const POST_COSTS = {
 
 export const REACTION_POINTS = parseInt(process.env.NEXT_PUBLIC_REACTION_POINTS || "100");
 export const POINTS_TO_BLA_RATE = parseInt(process.env.NEXT_PUBLIC_POINTS_TO_BLA_RATE || "1000");
+
+// Claim treasury address - address that holds BLA tokens for claims
+// If not set, will try to use mint function instead
+export const CLAIM_TREASURY_ADDRESS: Address | null = 
+  (process.env.NEXT_PUBLIC_CLAIM_TREASURY_ADDRESS as Address) || null;
 
 
 
