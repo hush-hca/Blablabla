@@ -24,9 +24,6 @@
     "viem": "^2.1.4",
     "wagmi": "^2.5.8"
   },
-  "optionalDependencies": {
-    "@react-native-async-storage/async-storage": "^1.23.1"
-  },
   "devDependencies": {
     "@types/node": "^20.11.19",
     "@types/react": "^18.2.56",
