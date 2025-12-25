@@ -23,37 +23,25 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const usedTransactionHashRef = useRef<string | null>(null);
 
-  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess, error: txError } = useWaitForTransactionReceipt({
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   useEffect(() => {
-    if (isSuccess && audioBlob) {
+    if (isSuccess && audioBlob && hash && hash !== usedTransactionHashRef.current) {
+      usedTransactionHashRef.current = hash;
       handleUpload();
     }
-  }, [isSuccess, audioBlob]);
-
-  // 에러 처리
-  useEffect(() => {
-    if (writeError) {
-      console.error("Write contract error:", writeError);
-      alert(`Payment failed: ${writeError.message || "Transaction rejected"}`);
-      setShowPaymentModal(false);
-    }
-  }, [writeError]);
-
-  useEffect(() => {
-    if (txError) {
-      console.error("Transaction error:", txError);
-      alert(`Transaction failed: ${txError.message || "Transaction reverted"}`);
-      setShowPaymentModal(false);
-    }
-  }, [txError]);
+  }, [isSuccess, audioBlob, hash]);
 
   async function startRecording() {
     try {
+      // Reset used transaction hash for new recording
+      usedTransactionHashRef.current = null;
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -89,17 +77,12 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
   }
 
   async function handlePayment(token: "BLA" | "HUNT" | "USDC") {
-    console.log("handlePayment called with token:", token);
-    
     const tokenAddress =
       token === "BLA"
         ? BLA_TOKEN
         : token === "HUNT"
         ? HUNT_TOKEN
         : USDC_TOKEN;
-
-    console.log("Token address:", tokenAddress);
-    console.log("Payment receiver address:", PAYMENT_RECEIVER_ADDRESS);
 
     // Validate token address
     if (!tokenAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
@@ -114,24 +97,18 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
     }
 
     const amount = POST_COSTS[token];
-    console.log("Payment amount:", amount.toString());
+    const decimals = token === "USDC" ? 6 : 18;
 
     try {
-      // writeContract는 void를 반환하므로, 에러는 writeError를 통해 확인
-      console.log("Calling writeContract...");
       writeContract({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: "transfer",
         args: [PAYMENT_RECEIVER_ADDRESS, amount],
       });
-      console.log("writeContract called successfully");
-      
-      // 모달을 닫지 않고 트랜잭션이 완료될 때까지 대기
-      // isSuccess가 true가 되면 handleUpload가 자동으로 호출됨
     } catch (error) {
       console.error("Payment error:", error);
-      alert(`Payment failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert("Payment failed. Please try again.");
     }
   }
 
@@ -218,6 +195,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
     setAudioBlob(null);
     setAudioUrl(null);
     chunksRef.current = [];
+    usedTransactionHashRef.current = null;
   }
 
   return (
