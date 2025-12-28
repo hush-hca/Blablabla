@@ -9,13 +9,12 @@ const nextConfig = {
       },
     ],
   },
-  // Farcaster 미니앱 리다이렉트 설정
   async redirects() {
     return [
       {
         source: '/.well-known/farcaster.json',
         destination: 'https://api.farcaster.xyz/miniapps/hosted-manifest/019b65f1-1120-5da3-eefc-b566e8a99403',
-        permanent: false, // 307 Temporary Redirect
+        permanent: false,
       },
     ];
   },

@@ -4,6 +4,13 @@
       "path": "/api/cron/daily-rewards",
       "schedule": "0 0 * * *"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/.well-known/farcaster.json",
+      "destination": "https://api.farcaster.xyz/miniapps/hosted-manifest/019b65f1-1120-5da3-eefc-b566e8a99403",
+      "permanent": false
+    }
   ]
 }
 
