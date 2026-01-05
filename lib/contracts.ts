@@ -57,6 +57,9 @@ export const POST_COSTS = {
   USDC: BigInt(process.env.NEXT_PUBLIC_POST_COST_USDC || "1") * BigInt(10 ** 6), // USDC has 6 decimals
 };
 
+// Delete fee configuration (1 USDC)
+export const DELETE_FEE_USDC = BigInt(1) * BigInt(10 ** 6); // 1 USDC with 6 decimals
+
 export const REACTION_POINTS = parseInt(process.env.NEXT_PUBLIC_REACTION_POINTS || "100");
 export const POINTS_TO_BLA_RATE = parseInt(process.env.NEXT_PUBLIC_POINTS_TO_BLA_RATE || "1000");
 

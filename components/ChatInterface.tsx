@@ -79,11 +79,26 @@ export function ChatInterface({ walletAddress }: ChatInterfaceProps) {
           fetchMessages();
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "voice_messages",
+        },
+        (payload) => {
+          fetchMessages();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
+  }
+
+  function handleMessageDelete(messageId: string) {
+    setMessages((prevMessages) => prevMessages.filter((msg) => msg.id !== messageId));
   }
 
   function scrollToBottom() {
@@ -98,7 +113,7 @@ export function ChatInterface({ walletAddress }: ChatInterfaceProps) {
     <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col" style={{ height: "600px" }}>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
-          <VoiceMessageCard key={message.id} message={message} />
+          <VoiceMessageCard key={message.id} message={message} onDelete={handleMessageDelete} />
         ))}
         <div ref={messagesEndRef} />
       </div>

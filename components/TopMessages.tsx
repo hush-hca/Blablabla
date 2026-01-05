@@ -59,6 +59,12 @@ export function TopMessages() {
     }
   }
 
+  function handleMessageDelete(messageId: string) {
+    setTopMessages((prevMessages) => prevMessages.filter((msg) => msg.id !== messageId));
+    // Refetch to get updated top messages
+    fetchTopMessages();
+  }
+
   if (loading) {
     return (
       <div className="bg-gray-800 rounded-lg p-6 mb-6">
@@ -91,7 +97,7 @@ export function TopMessages() {
                 {message.reaction_count} reactions
               </span>
             </div>
-            <VoiceMessageCard message={message} />
+            <VoiceMessageCard message={message} onDelete={handleMessageDelete} />
           </div>
         ))}
       </div>
