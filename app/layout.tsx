@@ -5,7 +5,7 @@ import { Providers } from "./providers";
 import { getHomeEmbed, createEmbedMetaTag } from "@/lib/farcaster-embed";
 
 // Base URL 설정 (환경변수 또는 기본값)
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://blablabla-black.vercel.app";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://blablabla-uo17.vercel.app/";
 const homeEmbed = getHomeEmbed(baseUrl);
 
 export const metadata: Metadata = {
