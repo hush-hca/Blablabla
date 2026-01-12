@@ -23,7 +23,6 @@
   - 어두운 배경 (앱 테마와 일치)
   - 시각적으로 매력적인 디자인
 
-
 ### 2. Splash Image (`/public/splash-image.png`) - 선택사항
 
 **용도**: Mini App이 열릴 때 표시되는 스플래시 화면
