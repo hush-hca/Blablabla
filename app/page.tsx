@@ -6,6 +6,8 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ChatInterface } from "@/components/ChatInterface";
 import { TopMessages } from "@/components/TopMessages";
 import { Logo } from "@/components/Logo";
+import { MiniAppEmbed } from "@/components/MiniAppEmbed";
+import { sdk } from "@farcaster/miniapp-sdk";
 import Link from "next/link";
 
 export default function Home() {
@@ -14,6 +16,8 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
+    // Mini App이 로드되면 ready() 호출
+    sdk.actions.ready().catch(console.error);
   }, []);
 
   if (!mounted) {
@@ -21,8 +25,10 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <>
+      <MiniAppEmbed />
+      <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
         <header className="mb-8 flex items-center justify-between">
           <div>
             <Logo size={48} className="mb-4" />
@@ -63,6 +69,7 @@ export default function Home() {
         )}
       </div>
     </main>
+    </>
   );
 }
 

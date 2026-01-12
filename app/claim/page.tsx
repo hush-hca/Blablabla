@@ -7,6 +7,7 @@ import { POINTS_TO_BLA_RATE } from "@/lib/contracts";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { Logo } from "@/components/Logo";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { sdk } from "@farcaster/miniapp-sdk";
 import { Loader2 } from "lucide-react";
 
 export default function ClaimPage() {
@@ -23,6 +24,9 @@ export default function ClaimPage() {
   });
 
   useEffect(() => {
+    // Mini App이 로드되면 ready() 호출
+    sdk.actions.ready().catch(console.error);
+    
     if (address) {
       fetchClaimableAmount();
     }
