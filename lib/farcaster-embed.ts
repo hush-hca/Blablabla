@@ -3,14 +3,31 @@
  * https://miniapps.farcaster.xyz/docs/specification/mini-app-embed
  */
 
+export interface MiniAppEmbedButton {
+  title: string;
+  action: {
+    type: "launch_frame";
+    name: string;
+    url: string;
+  };
+}
+
 export interface MiniAppEmbed {
   version: string;
-  image: string;
+  imageUrl: string; // 필수: image 대신 imageUrl 사용
   actionUrl: string;
+  button: MiniAppEmbedButton; // 필수
   title?: string;
   description?: string;
   splashImage?: string;
   splashBackgroundColor?: string;
+}
+
+/**
+ * Base URL 정리 (마지막 슬래시 제거)
+ */
+function normalizeBaseUrl(baseUrl: string): string {
+  return baseUrl.replace(/\/$/, "");
 }
 
 /**
@@ -24,13 +41,22 @@ export function createEmbedMetaTag(embed: MiniAppEmbed): string {
  * 기본 홈페이지 Embed 설정
  */
 export function getHomeEmbed(baseUrl: string): MiniAppEmbed {
+  const normalizedUrl = normalizeBaseUrl(baseUrl);
   return {
     version: "1",
-    image: `${baseUrl}/embed-image.png`, // 3:2 비율 이미지 필요
-    actionUrl: `${baseUrl}/`,
+    imageUrl: `${normalizedUrl}/embed-image.png`, // 3:2 비율 이미지 필요
+    actionUrl: `${normalizedUrl}/`,
+    button: {
+      title: "Open Blabla",
+      action: {
+        type: "launch_frame",
+        name: "Blabla",
+        url: `${normalizedUrl}/`,
+      },
+    },
     title: "Blabla - Anonymous Voice Sharing",
     description: "Share your bear market feelings anonymously with voice messages",
-    splashImage: `${baseUrl}/splash-image.png`, // 선택사항
+    splashImage: `${normalizedUrl}/splash-image.png`, // 선택사항
     splashBackgroundColor: "#000000", // 검은색 배경
   };
 }
@@ -39,13 +65,22 @@ export function getHomeEmbed(baseUrl: string): MiniAppEmbed {
  * 메시지 페이지 Embed 설정
  */
 export function getMessageEmbed(baseUrl: string, messageId: string): MiniAppEmbed {
+  const normalizedUrl = normalizeBaseUrl(baseUrl);
   return {
     version: "1",
-    image: `${baseUrl}/embed-image.png`,
-    actionUrl: `${baseUrl}/message/${messageId}`,
+    imageUrl: `${normalizedUrl}/embed-image.png`,
+    actionUrl: `${normalizedUrl}/message/${messageId}`,
+    button: {
+      title: "View Message",
+      action: {
+        type: "launch_frame",
+        name: "Blabla",
+        url: `${normalizedUrl}/message/${messageId}`,
+      },
+    },
     title: "Blabla - Voice Message",
     description: "Listen to this anonymous voice message",
-    splashImage: `${baseUrl}/splash-image.png`,
+    splashImage: `${normalizedUrl}/splash-image.png`,
     splashBackgroundColor: "#000000",
   };
 }

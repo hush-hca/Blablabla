@@ -44,7 +44,7 @@ export function MiniAppEmbed({ messageId }: MiniAppEmbedProps) {
     if (!ogImage) {
       const ogMeta = document.createElement("meta");
       ogMeta.setAttribute("property", "og:image");
-      ogMeta.content = embed.image;
+      ogMeta.content = embed.imageUrl;
       document.head.appendChild(ogMeta);
     }
 
