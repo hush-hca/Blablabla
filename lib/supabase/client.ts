@@ -31,6 +31,16 @@ function getSupabaseClient(): SupabaseClient {
       persistSession: false,
       autoRefreshToken: false,
     },
+    global: {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey,
+      },
+    },
+    db: {
+      schema: 'public',
+    },
   });
 
   return supabaseClientInstance;
