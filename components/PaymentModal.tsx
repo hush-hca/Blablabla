@@ -61,8 +61,3 @@ export function PaymentModal({ onPayment, onClose }: PaymentModalProps) {
     </div>
   );
 }
-
-
-
-
-

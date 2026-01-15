@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseEther, formatUnits } from "viem";
 import { supabase } from "@/lib/supabase/client";
 import { POST_COSTS, BLA_TOKEN, HUNT_TOKEN, USDC_TOKEN, ERC20_ABI, PAYMENT_RECEIVER_ADDRESS } from "@/lib/contracts";
 import { PaymentModal } from "./PaymentModal";
@@ -20,6 +19,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [selectedPaymentToken, setSelectedPaymentToken] = useState<"BLA" | "HUNT" | "USDC" | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -97,9 +97,9 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
     }
 
     const amount = POST_COSTS[token];
-    const decimals = token === "USDC" ? 6 : 18;
 
     try {
+      setSelectedPaymentToken(token);
       writeContract({
         address: tokenAddress,
         abi: ERC20_ABI,
@@ -109,6 +109,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
     } catch (error) {
       console.error("Payment error:", error);
       alert("Payment failed. Please try again.");
+      setSelectedPaymentToken(null);
     }
   }
 
@@ -157,7 +158,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
       }
 
       // Determine payment token from transaction
-      const paymentToken = "BLA"; // This should be determined from the transaction
+      const paymentToken = selectedPaymentToken || "BLA";
       const paymentAmount = POST_COSTS[paymentToken].toString();
 
       // Save message to database
@@ -168,7 +169,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
         is_anonymous: isAnonymous,
         payment_token: paymentToken,
         payment_amount: paymentAmount,
-        transaction_hash: hash,
+        transaction_hash: hash || null,
       });
 
       if (dbError) throw dbError;
@@ -177,6 +178,7 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
       setAudioBlob(null);
       setAudioUrl(null);
       setShowPaymentModal(false);
+      setSelectedPaymentToken(null);
       onPostSuccess();
     } catch (error) {
       console.error("Upload error:", error);
@@ -194,6 +196,8 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
     setIsRecording(false);
     setAudioBlob(null);
     setAudioUrl(null);
+    setShowPaymentModal(false);
+    setSelectedPaymentToken(null);
     chunksRef.current = [];
     usedTransactionHashRef.current = null;
   }

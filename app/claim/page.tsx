@@ -17,11 +17,16 @@ export default function ClaimPage() {
   const [topMessageReward, setTopMessageReward] = useState(0);
   const [loading, setLoading] = useState(true);
   const [canClaim, setCanClaim] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Mini App이 로드되면 ready() 호출
@@ -106,19 +111,64 @@ export default function ClaimPage() {
     if (!address || !canClaim) return;
 
     try {
-      // In a real implementation, you would call a contract to mint/transfer BLA tokens
-      // For now, we'll just record the claim in the database
       const today = new Date().toISOString().split("T")[0];
+      
+      // Double-check if already claimed today (prevent race condition)
+      const { data: existingClaim } = await supabase
+        .from("daily_claims")
+        .select("id")
+        .eq("wallet_address", address)
+        .eq("claim_date", today)
+        .single();
+
+      if (existingClaim) {
+        alert("You have already claimed today. Please refresh the page.");
+        fetchClaimableAmount();
+        return;
+      }
+
+      // Get or create user
+      let { data: user } = await supabase
+        .from("users")
+        .select("id")
+        .eq("wallet_address", address)
+        .single();
+
+      if (!user) {
+        const { data: newUser } = await supabase
+          .from("users")
+          .insert({ wallet_address: address })
+          .select()
+          .single();
+        user = newUser;
+      }
+
+      if (!user) {
+        throw new Error("Failed to get or create user");
+      }
+
       const pointsBLA = Math.floor(bbPoints / POINTS_TO_BLA_RATE);
 
-      await supabase.from("daily_claims").insert({
+      // Insert claim record
+      const { error: insertError } = await supabase.from("daily_claims").insert({
+        user_id: user.id,
         wallet_address: address,
         claim_date: today,
         bb_points_converted: pointsBLA,
         top_message_reward: topMessageReward,
         total_claimed: claimableBLA,
-        transaction_hash: hash || "pending",
+        transaction_hash: hash || null,
       });
+
+      if (insertError) {
+        // Handle 409 Conflict (duplicate claim)
+        if (insertError.code === "23505") {
+          alert("You have already claimed today. Please refresh the page.");
+          fetchClaimableAmount();
+          return;
+        }
+        throw insertError;
+      }
 
       // Mark top message rewards as claimed
       if (topMessageReward > 0) {
@@ -138,12 +188,34 @@ export default function ClaimPage() {
         }
       }
 
-      // Reset BB points (they've been converted)
-      // In production, you'd want to track this more carefully
-    } catch (error) {
+      // Refresh claimable amount
+      fetchClaimableAmount();
+    } catch (error: any) {
       console.error("Error claiming:", error);
-      alert("Failed to claim. Please try again.");
+      
+      // Handle specific error codes
+      if (error.code === "23505") {
+        alert("You have already claimed today. Please refresh the page.");
+        fetchClaimableAmount();
+      } else {
+        alert(`Failed to claim: ${error.message || "Please try again."}`);
+      }
     }
+  }
+
+  // Prevent hydration mismatch by only rendering after mount
+  if (!mounted) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+        <div className="container mx-auto px-4 py-8 max-w-2xl">
+          <Logo size={48} className="mb-8" />
+          <div className="bg-gray-800 rounded-lg p-8 text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-gray-400">Loading...</p>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (!isConnected) {
