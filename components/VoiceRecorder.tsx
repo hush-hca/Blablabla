@@ -43,23 +43,83 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
       usedTransactionHashRef.current = null;
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Determine the best mimeType for the browser
+      let mimeType = "audio/webm;codecs=opus";
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = "audio/webm";
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = "audio/mp4";
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = ""; // Use browser default
+          }
+        }
+      }
+
+      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data);
+          console.log("Data chunk received:", event.data.size, "bytes");
         }
       };
 
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+      mediaRecorder.onstop = async () => {
+        // Wait a bit to ensure all data is collected
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Determine the correct blob type based on what was actually recorded
+        const recordedType = mediaRecorder.mimeType || "audio/webm";
+        
+        // Validate chunks
+        if (chunksRef.current.length === 0) {
+          console.error("No data chunks collected");
+          alert("Recording failed. No audio data captured. Please try again.");
+          return;
+        }
+        
+        const totalSize = chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
+        console.log("Total chunks:", chunksRef.current.length, "Total size:", totalSize, "bytes");
+        
+        if (totalSize === 0) {
+          console.error("Recorded blob is empty");
+          alert("Recording failed. Please try again.");
+          return;
+        }
+
+        const blob = new Blob(chunksRef.current, { type: recordedType });
+        
+        // Validate final blob
+        if (blob.size === 0) {
+          console.error("Final blob is empty");
+          alert("Recording failed. Please try again.");
+          return;
+        }
+
+        console.log("Recording complete:", {
+          blobSize: blob.size,
+          blobType: blob.type,
+          mimeType: recordedType,
+        });
+
         setAudioBlob(blob);
-        setAudioUrl(URL.createObjectURL(blob));
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
       };
 
-      mediaRecorder.start();
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
+        alert("Recording error occurred. Please try again.");
+        setIsRecording(false);
+      };
+
+      // Start recording with timeslice to ensure data is available
+      // Use smaller timeslice for more frequent data collection
+      mediaRecorder.start(50); // Collect data every 50ms
       setIsRecording(true);
     } catch (error) {
       console.error("Error starting recording:", error);
@@ -114,46 +174,143 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
   }
 
   async function handleUpload() {
-    if (!audioBlob) return;
+    if (!audioBlob) {
+      console.error("No audio blob to upload");
+      alert("No audio recording found. Please record again.");
+      return;
+    }
 
     setUploading(true);
     try {
-      // Upload to Supabase Storage
-      const fileExt = "webm";
-      const fileName = `${walletAddress}-${Date.now()}.${fileExt}`;
-      const filePath = `voice-messages/${fileName}`;
+      // Validate blob
+      if (audioBlob.size === 0) {
+        throw new Error("Audio blob is empty. Please record again.");
+      }
 
-      const { error: uploadError } = await supabase.storage
+      console.log("Uploading audio blob:", {
+        size: audioBlob.size,
+        type: audioBlob.type,
+      });
+
+      // Determine file extension and content type from blob
+      const blobType = audioBlob.type || "audio/webm";
+      let fileExt = "webm";
+      let contentType = "audio/webm";
+      
+      if (blobType.includes("webm")) {
+        fileExt = "webm";
+        contentType = "audio/webm";
+      } else if (blobType.includes("mp4") || blobType.includes("m4a")) {
+        fileExt = "m4a";
+        contentType = "audio/mp4";
+      } else if (blobType.includes("ogg")) {
+        fileExt = "ogg";
+        contentType = "audio/ogg";
+      } else if (blobType.includes("wav")) {
+        fileExt = "wav";
+        contentType = "audio/wav";
+      }
+
+      const fileName = `${walletAddress}-${Date.now()}.${fileExt}`;
+      // Don't include bucket name in path - .from() already specifies the bucket
+      const filePath = fileName;
+
+      console.log("Uploading file:", {
+        fileName,
+        filePath,
+        contentType,
+        size: audioBlob.size,
+      });
+
+      // Verify blob before upload
+      console.log("Blob verification before upload:", {
+        size: audioBlob.size,
+        type: audioBlob.type,
+        isBlob: audioBlob instanceof Blob,
+      });
+
+      // Create a fresh Blob to ensure integrity
+      const uploadBlob = new Blob([audioBlob], { type: contentType });
+      
+      if (uploadBlob.size !== audioBlob.size) {
+        console.warn("Blob size mismatch after recreation");
+      }
+
+      // Upload directly as Blob
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from("voice-messages")
-        .upload(filePath, audioBlob, {
-          contentType: "audio/webm",
+        .upload(filePath, uploadBlob, {
+          contentType: contentType,
           upsert: false,
+          cacheControl: "3600",
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error details:", {
+          message: uploadError.message,
+          statusCode: uploadError.statusCode,
+          error: uploadError.error,
+        });
+        
+        // Provide specific error messages
+        if (uploadError.message?.includes("duplicate") || uploadError.statusCode === "409") {
+          throw new Error("File already exists. Please try again.");
+        } else if (uploadError.message?.includes("permission") || uploadError.statusCode === "403") {
+          throw new Error("Permission denied. Please check Supabase Storage settings.");
+        } else if (uploadError.message?.includes("size") || uploadError.statusCode === "413") {
+          throw new Error("File too large. Please record a shorter message.");
+        } else {
+          throw new Error(`Upload failed: ${uploadError.message || "Unknown error"}`);
+        }
+      }
+
+      if (!uploadData) {
+        throw new Error("Upload returned no data");
+      }
+
+      console.log("Upload successful:", uploadData);
 
       // Get public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("voice-messages").getPublicUrl(filePath);
 
+      if (!publicUrl) {
+        throw new Error("Failed to get public URL");
+      }
+
+      console.log("Public URL:", publicUrl);
+
       // Get or create user
-      let { data: user } = await supabase
+      let { data: user, error: userError } = await supabase
         .from("users")
         .select("id")
         .eq("wallet_address", walletAddress)
         .single();
 
+      if (userError && userError.code !== "PGRST116") {
+        // PGRST116 is "not found" which is expected
+        console.error("Error fetching user:", userError);
+        throw new Error(`Failed to fetch user: ${userError.message}`);
+      }
+
       if (!user) {
-        const { data: newUser } = await supabase
+        console.log("Creating new user for wallet:", walletAddress);
+        const { data: newUser, error: createError } = await supabase
           .from("users")
           .insert({ wallet_address: walletAddress })
           .select()
           .single();
+
+        if (createError) {
+          console.error("Error creating user:", createError);
+          throw new Error(`Failed to create user: ${createError.message}`);
+        }
+
         user = newUser;
       }
 
-      if (!user) {
+      if (!user || !user.id) {
         throw new Error("Failed to get or create user");
       }
 
@@ -161,28 +318,56 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
       const paymentToken = selectedPaymentToken || "BLA";
       const paymentAmount = POST_COSTS[paymentToken].toString();
 
-      // Save message to database
-      const { error: dbError } = await supabase.from("voice_messages").insert({
+      console.log("Saving message to database:", {
         user_id: user.id,
-        wallet_address: walletAddress,
         voice_url: publicUrl,
-        is_anonymous: isAnonymous,
         payment_token: paymentToken,
-        payment_amount: paymentAmount,
-        transaction_hash: hash || null,
       });
 
-      if (dbError) throw dbError;
+      // Save message to database
+      const { data: messageData, error: dbError } = await supabase
+        .from("voice_messages")
+        .insert({
+          user_id: user.id,
+          wallet_address: walletAddress,
+          voice_url: publicUrl,
+          is_anonymous: isAnonymous,
+          payment_token: paymentToken,
+          payment_amount: paymentAmount,
+          transaction_hash: hash || null,
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error("Database error:", {
+          message: dbError.message,
+          code: dbError.code,
+          details: dbError.details,
+          hint: dbError.hint,
+        });
+        throw new Error(`Failed to save message: ${dbError.message || "Unknown error"}`);
+      }
+
+      if (!messageData) {
+        throw new Error("Message saved but no data returned");
+      }
+
+      console.log("Message saved successfully:", messageData);
 
       // Reset state
       setAudioBlob(null);
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
       setAudioUrl(null);
       setShowPaymentModal(false);
       setSelectedPaymentToken(null);
       onPostSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
-      alert("Failed to upload voice message. Please try again.");
+      const errorMessage = error?.message || error?.toString() || "Unknown error occurred";
+      alert(`Failed to upload voice message: ${errorMessage}\n\nPlease check the console for more details.`);
     } finally {
       setUploading(false);
     }
@@ -190,10 +375,19 @@ export function VoiceRecorder({ walletAddress, onPostSuccess }: VoiceRecorderPro
 
   function cancelRecording() {
     if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      try {
+        if (mediaRecorderRef.current.state !== "inactive") {
+          mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      } catch (error) {
+        console.error("Error stopping recorder:", error);
+      }
     }
     setIsRecording(false);
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
     setAudioBlob(null);
     setAudioUrl(null);
     setShowPaymentModal(false);
