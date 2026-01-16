@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { supabase } from "@/lib/supabase/client";
-import { POINTS_TO_BLA_RATE } from "@/lib/contracts";
+import { POINTS_TO_BLA_RATE, BLA_TOKEN, ERC20_ABI } from "@/lib/contracts";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { Logo } from "@/components/Logo";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { Loader2 } from "lucide-react";
+import { ClaimSuccessModal } from "@/components/ClaimSuccessModal";
+import { parseUnits } from "viem";
 
 export default function ClaimPage() {
   const { address, isConnected } = useAccount();
@@ -18,8 +20,10 @@ export default function ClaimPage() {
   const [loading, setLoading] = useState(true);
   const [canClaim, setCanClaim] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
@@ -38,11 +42,90 @@ export default function ClaimPage() {
   }, [address]);
 
   useEffect(() => {
-    if (isSuccess) {
-      alert("BLA tokens claimed successfully!");
-      fetchClaimableAmount();
+    if (isSuccess && hash) {
+      // Transaction confirmed, now save to database
+      saveClaimToDatabase(hash);
     }
-  }, [isSuccess]);
+  }, [isSuccess, hash]);
+
+  async function saveClaimToDatabase(transactionHash: string) {
+    if (!address) return;
+
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      
+      // Get or create user
+      let { data: user } = await supabase
+        .from("users")
+        .select("id")
+        .eq("wallet_address", address)
+        .single();
+
+      if (!user) {
+        const { data: newUser } = await supabase
+          .from("users")
+          .insert({ wallet_address: address })
+          .select()
+          .single();
+        user = newUser;
+      }
+
+      if (!user) {
+        throw new Error("Failed to get or create user");
+      }
+
+      const pointsBLA = Math.floor(bbPoints / POINTS_TO_BLA_RATE);
+
+      // Insert claim record
+      const { error: insertError } = await supabase.from("daily_claims").insert({
+        user_id: user.id,
+        wallet_address: address,
+        claim_date: today,
+        bb_points_converted: pointsBLA,
+        top_message_reward: topMessageReward,
+        total_claimed: claimableBLA,
+        transaction_hash: transactionHash,
+      });
+
+      if (insertError) {
+        // Handle 409 Conflict (duplicate claim)
+        if (insertError.code === "23505") {
+          console.warn("Claim already exists in database");
+        } else {
+          throw insertError;
+        }
+      }
+
+      // Mark top message rewards as claimed
+      if (topMessageReward > 0) {
+        const { data: userMessages } = await supabase
+          .from("voice_messages")
+          .select("id")
+          .eq("wallet_address", address);
+
+        const messageIds = userMessages?.map((m) => m.id) || [];
+
+        if (messageIds.length > 0) {
+          await supabase
+            .from("top_message_rewards")
+            .update({ claimed: true })
+            .in("message_id", messageIds)
+            .eq("claimed", false);
+        }
+      }
+
+      // Show success modal
+      setShowSuccessModal(true);
+      setClaiming(false);
+      
+      // Refresh claimable amount
+      fetchClaimableAmount();
+    } catch (error: any) {
+      console.error("Error saving claim to database:", error);
+      alert(`Failed to save claim: ${error.message || "Please try again."}`);
+      setClaiming(false);
+    }
+  }
 
   async function fetchClaimableAmount() {
     if (!address) return;
@@ -51,12 +134,19 @@ export default function ClaimPage() {
     try {
       // Check if already claimed today
       const today = new Date().toISOString().split("T")[0];
-      const { data: todayClaim } = await supabase
+      const { data: todayClaim, error: claimError } = await supabase
         .from("daily_claims")
         .select("*")
         .eq("wallet_address", address)
         .eq("claim_date", today)
         .single();
+
+      // Handle 406 or other errors gracefully
+      if (claimError && claimError.code !== "PGRST116") {
+        // PGRST116 is "not found" which is expected if no claim exists
+        console.error("Error checking claim:", claimError);
+        // Continue to calculate claimable amount even if check fails
+      }
 
       if (todayClaim) {
         setCanClaim(false);
@@ -108,7 +198,13 @@ export default function ClaimPage() {
   }
 
   async function handleClaim() {
-    if (!address || !canClaim) return;
+    if (!address || !canClaim || claiming) return;
+
+    // Validate BLA token address
+    if (!BLA_TOKEN || BLA_TOKEN === "0x0000000000000000000000000000000000000000") {
+      alert("BLA token address is not configured. Please set NEXT_PUBLIC_BLA_TOKEN environment variable.");
+      return;
+    }
 
     try {
       const today = new Date().toISOString().split("T")[0];
@@ -127,79 +223,22 @@ export default function ClaimPage() {
         return;
       }
 
-      // Get or create user
-      let { data: user } = await supabase
-        .from("users")
-        .select("id")
-        .eq("wallet_address", address)
-        .single();
+      setClaiming(true);
 
-      if (!user) {
-        const { data: newUser } = await supabase
-          .from("users")
-          .insert({ wallet_address: address })
-          .select()
-          .single();
-        user = newUser;
-      }
+      // Convert claimable BLA to wei (18 decimals)
+      const amountInWei = parseUnits(claimableBLA.toString(), 18);
 
-      if (!user) {
-        throw new Error("Failed to get or create user");
-      }
-
-      const pointsBLA = Math.floor(bbPoints / POINTS_TO_BLA_RATE);
-
-      // Insert claim record
-      const { error: insertError } = await supabase.from("daily_claims").insert({
-        user_id: user.id,
-        wallet_address: address,
-        claim_date: today,
-        bb_points_converted: pointsBLA,
-        top_message_reward: topMessageReward,
-        total_claimed: claimableBLA,
-        transaction_hash: hash || null,
+      // Call mint function on BLA token contract
+      writeContract({
+        address: BLA_TOKEN,
+        abi: ERC20_ABI,
+        functionName: "mint",
+        args: [address, amountInWei],
       });
-
-      if (insertError) {
-        // Handle 409 Conflict (duplicate claim)
-        if (insertError.code === "23505") {
-          alert("You have already claimed today. Please refresh the page.");
-          fetchClaimableAmount();
-          return;
-        }
-        throw insertError;
-      }
-
-      // Mark top message rewards as claimed
-      if (topMessageReward > 0) {
-        const { data: userMessages } = await supabase
-          .from("voice_messages")
-          .select("id")
-          .eq("wallet_address", address);
-
-        const messageIds = userMessages?.map((m) => m.id) || [];
-
-        if (messageIds.length > 0) {
-          await supabase
-            .from("top_message_rewards")
-            .update({ claimed: true })
-            .in("message_id", messageIds)
-            .eq("claimed", false);
-        }
-      }
-
-      // Refresh claimable amount
-      fetchClaimableAmount();
     } catch (error: any) {
-      console.error("Error claiming:", error);
-      
-      // Handle specific error codes
-      if (error.code === "23505") {
-        alert("You have already claimed today. Please refresh the page.");
-        fetchClaimableAmount();
-      } else {
-        alert(`Failed to claim: ${error.message || "Please try again."}`);
-      }
+      console.error("Error initiating claim:", error);
+      alert(`Failed to initiate claim: ${error.message || "Please try again."}`);
+      setClaiming(false);
     }
   }
 
@@ -275,16 +314,31 @@ export default function ClaimPage() {
             )}
 
             {canClaim && (
-              <button
-                onClick={handleClaim}
-                disabled={isPending || isConfirming}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-4 rounded-lg font-semibold text-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {(isPending || isConfirming) && (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+              <>
+                <button
+                  onClick={handleClaim}
+                  disabled={isPending || isConfirming || claiming}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-4 rounded-lg font-semibold text-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {(isPending || isConfirming || claiming) && (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  )}
+                  {isPending
+                    ? "Waiting for wallet..."
+                    : isConfirming
+                    ? "Confirming transaction..."
+                    : claiming
+                    ? "Processing..."
+                    : `Claim ${claimableBLA} BLA`}
+                </button>
+                {writeError && (
+                  <div className="bg-red-900 bg-opacity-50 border border-red-700 rounded-lg p-4">
+                    <p className="text-red-200 text-sm">
+                      Transaction failed: {writeError.message || "Please try again."}
+                    </p>
+                  </div>
                 )}
-                {isPending || isConfirming ? "Claiming..." : `Claim ${claimableBLA} BLA`}
-              </button>
+              </>
             )}
 
             <div className="text-sm text-gray-400 mt-4">
@@ -295,6 +349,16 @@ export default function ClaimPage() {
           </div>
         )}
       </div>
+      {showSuccessModal && (
+        <ClaimSuccessModal
+          amount={claimableBLA}
+          transactionHash={hash}
+          onClose={() => {
+            setShowSuccessModal(false);
+            fetchClaimableAmount();
+          }}
+        />
+      )}
     </main>
   );
 }

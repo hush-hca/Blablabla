@@ -22,7 +22,7 @@ export const BLA_TOKEN: Address = (process.env.NEXT_PUBLIC_BLA_TOKEN as Address)
 export const PAYMENT_RECEIVER_ADDRESS: Address | null = 
   (process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS as Address) || null;
 
-// ERC20 ABI (minimal for transfer)
+// ERC20 ABI (minimal for transfer and mint)
 export const ERC20_ABI = [
   {
     constant: false,
@@ -32,6 +32,16 @@ export const ERC20_ABI = [
     ],
     name: "transfer",
     outputs: [{ name: "", type: "bool" }],
+    type: "function",
+  },
+  {
+    constant: false,
+    inputs: [
+      { name: "_to", type: "address" },
+      { name: "_amount", type: "uint256" },
+    ],
+    name: "mint",
+    outputs: [],
     type: "function",
   },
   {
