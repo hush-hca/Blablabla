@@ -24,29 +24,12 @@ interface VoiceMessageCardProps {
 
 const EMOJIS = ["❤️", "😂", "😢", "🔥", "💎"];
 
-// Fix duplicate voice-messages in URL path
-function normalizeVoiceUrl(url: string): string {
-  if (!url) return url;
-  
-  // Fix URLs with duplicate voice-messages/voice-messages/
-  // e.g., .../voice-messages/voice-messages/file.webm -> .../voice-messages/file.webm
-  const duplicatePattern = /\/voice-messages\/voice-messages\//;
-  if (duplicatePattern.test(url)) {
-    return url.replace(duplicatePattern, '/voice-messages/');
-  }
-  
-  return url;
-}
-
 export function VoiceMessageCard({ message, onDelete }: VoiceMessageCardProps) {
   const { address } = useAccount();
   const [reactionCount, setReactionCount] = useState(message.reaction_count || 0);
   const [userReactions, setUserReactions] = useState<string[]>([]);
   const [showShare, setShowShare] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Normalize voice URL to fix duplicate path issue
-  const normalizedVoiceUrl = normalizeVoiceUrl(message.voice_url);
 
   const { writeContract, data: deleteHash, isPending: isDeletePending } = useWriteContract();
   const { isLoading: isDeleteConfirming, isSuccess: isDeleteSuccess } = useWaitForTransactionReceipt({
@@ -311,48 +294,7 @@ export function VoiceMessageCard({ message, onDelete }: VoiceMessageCardProps) {
         </div>
       )}
 
-      <audio 
-        src={normalizedVoiceUrl} 
-        controls 
-        className="w-full"
-        preload="none"
-        crossOrigin="anonymous"
-        onError={(e) => {
-          const audioElement = e.currentTarget;
-          const error = audioElement.error;
-          console.error("Audio playback error:", {
-            code: error?.code,
-            message: error?.message,
-            originalUrl: message.voice_url,
-            normalizedUrl: normalizedVoiceUrl,
-            networkState: audioElement.networkState,
-            readyState: audioElement.readyState,
-            currentSrc: audioElement.currentSrc,
-          });
-          
-          // Try to fetch the file directly to verify it exists
-          fetch(normalizedVoiceUrl, { method: 'HEAD' })
-            .then(response => {
-              console.log("File HEAD request:", {
-                status: response.status,
-                statusText: response.statusText,
-                contentType: response.headers.get('content-type'),
-                contentLength: response.headers.get('content-length'),
-              });
-            })
-            .catch(fetchError => {
-              console.error("File fetch error:", fetchError);
-            });
-        }}
-        onLoadedMetadata={(e) => {
-          const audioElement = e.currentTarget;
-          console.log("Audio loaded successfully:", {
-            duration: audioElement.duration,
-            readyState: audioElement.readyState,
-            networkState: audioElement.networkState,
-          });
-        }}
-      />
+      <audio src={message.voice_url} controls className="w-full" />
 
       {showShare && (
         <ShareToFarcaster

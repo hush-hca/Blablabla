@@ -34,7 +34,6 @@ function getSupabaseClient(): SupabaseClient {
     global: {
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
         'apikey': supabaseAnonKey,
       },
     },

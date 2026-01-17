@@ -52,14 +52,14 @@ export default function MessagePage() {
     return (
       <>
         <MiniAppEmbed messageId={messageId} />
-        <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-          <div className="container mx-auto px-4 py-8 max-w-2xl">
-            <Logo size={48} className="mb-8" />
-            <div className="flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
+      <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+        <div className="container mx-auto px-4 py-8 max-w-2xl">
+          <Logo size={48} className="mb-8" />
+          <div className="flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        </main>
+        </div>
+      </main>
       </>
     );
   }
@@ -68,14 +68,14 @@ export default function MessagePage() {
     return (
       <>
         <MiniAppEmbed messageId={messageId} />
-        <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-          <div className="container mx-auto px-4 py-8 max-w-2xl">
-            <Logo size={48} className="mb-8" />
-            <div className="flex items-center justify-center">
-              <p className="text-gray-400">Message not found</p>
-            </div>
+      <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+        <div className="container mx-auto px-4 py-8 max-w-2xl">
+          <Logo size={48} className="mb-8" />
+          <div className="flex items-center justify-center">
+            <p className="text-gray-400">Message not found</p>
           </div>
-        </main>
+        </div>
+      </main>
       </>
     );
   }
@@ -83,12 +83,12 @@ export default function MessagePage() {
   return (
     <>
       <MiniAppEmbed messageId={messageId} />
-      <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-        <div className="container mx-auto px-4 py-8 max-w-2xl">
-          <Logo size={48} className="mb-8" />
-          <VoiceMessageCard message={message} />
-        </div>
-      </main>
+    <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <Logo size={48} className="mb-8" />
+        <VoiceMessageCard message={message} />
+      </div>
+    </main>
     </>
   );
 }

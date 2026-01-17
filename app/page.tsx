@@ -27,8 +27,8 @@ export default function Home() {
   return (
     <>
       <MiniAppEmbed />
-      <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         <header className="mb-8 flex items-center justify-between">
           <div>
             <Logo size={48} className="mb-4" />
